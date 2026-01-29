@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>부어모 - 부산 어린이들 모여라!</title>
+    
+    <!-- 폰트: 귀여운 느낌의 Jua 폰트 사용 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 아이콘 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        busanSky: '#E0F7FA',       // 하늘색
+                        busanBlue: '#29B6F6',      // 부산 메인 블루 (밝은 파랑)
+                        busanDeep: '#0277BD',      // 깊은 바다색
+                        busanSand: '#FFF9C4',      // 모래사장 색
+                        accentYellow: '#FFEB3B',   // 강조 노랑
+                    },
+                    fontFamily: {
+                        'jua': ['Jua', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            background: linear-gradient(180deg, #E1F5FE 0%, #81D4FA 40%, #29B6F6 100%);
+            overflow-x: hidden;
+            position: relative;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 공통 애니메이션 --- */
+        .ocean-pattern {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.4) 0%, transparent 20%),
+                radial-gradient(circle at 80% 60%, rgba(255, 255, 255, 0.4) 0%, transparent 20%);
+            z-index: -2; pointer-events: none;
+        }
+
+        .bubble {
+            position: absolute; bottom: -50px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: rise 15s infinite ease-in;
+            z-index: -1;
+        }
+        @keyframes rise {
+            0% { transform: translateY(0) scale(1); opacity: 0; }
+            50% { opacity: 0.6; }
+            100% { transform: translateY(-120vh) scale(1.5); opacity: 0; }
+        }
+
+        .cloud {
+            position: absolute; background: white; border-radius: 50px;
+            opacity: 0.9; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            animation: floatCloud 30s infinite linear; z-index: 0;
+        }
+        @keyframes floatCloud {
+            from { transform: translateX(-200px); }
+            to { transform: translateX(100vw); }
+        }
+
+        .seagull-anim {
+            position: absolute; z-index: 1; opacity: 0.8;
+            animation: fly 20s infinite ease-in-out; color: #fff;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.2));
+        }
+        @keyframes fly {
+            0% { transform: translate(-10vw, 20px) scale(0.8) rotate(5deg); }
+            50% { transform: translate(50vw, -20px) scale(1) rotate(-5deg); }
+            100% { transform: translate(110vw, 20px) scale(0.8) rotate(5deg); }
+        }
+
+        /* --- 포털 전용 스타일 --- */
+        .word-cloud-container {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 30px; border: 4px solid #fff;
+            box-shadow: 0 10px 25px rgba(2, 119, 189, 0.15);
+            position: relative; overflow: hidden;
+        }
+
+        .word-item {
+            display: inline-block; cursor: pointer;
+            transition: transform 0.3s, color 0.3s;
+            animation: floatWord 3s ease-in-out infinite alternate;
+        }
+        .word-item:hover { transform: scale(1.2) rotate(-5deg); z-index: 10; }
+        @keyframes floatWord { 0% { transform: translateY(0); } 100% { transform: translateY(-8px); } }
+
+        .wave-container {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            overflow: hidden; line-height: 0; z-index: -1;
+        }
+        .wave-svg { position: relative; display: block; width: calc(100% + 1.3px); height: 120px; }
+        .wave-shape-front { fill: #0277BD; opacity: 0.8; }
+
+        /* --- 게임 영역 스타일 --- */
+        #game-view {
+            display: none;
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+            background-color: #050b14;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            height: 600px; 
+        }
+        #gameCanvas {
+            background: linear-gradient(to bottom, #050b14 0%, #0b1a2a 50%, #1b263b 100%);
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .ui-layer {
+            position: absolute; top: 20px; left: 20px;
+            color: white; pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,1); z-index: 10;
+        }
+        .start-screen, .game-over-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            color: white; z-index: 20;
+        }
+        .hidden { display: none !important; }
+        .btn-game {
+            padding: 12px 28px; font-size: 1.2rem;
+            background: #ff0055; border: none; border-radius: 50px;
+            color: white; font-weight: bold; cursor: pointer;
+            transition: all 0.2s; margin-top: 20px;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+        }
+        .btn-game:hover { background: #ff4d88; transform: scale(1.05); }
+        .back-to-home {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(255, 255, 255, 0.2); color: white;
+            padding: 6px 14px; border-radius: 15px;
+            backdrop-filter: blur(5px); z-index: 30;
+            cursor: pointer; font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 배경 장식 -->
+    <div class="ocean-pattern"></div>
+    <div class="bubble w-4 h-4 left-10" style="animation-duration: 12s;"></div>
+    <div class="bubble w-8 h-8 left-1/4" style="animation-duration: 18s;"></div>
+    <div class="bubble w-6 h-6 left-1/2" style="animation-duration: 15s;"></div>
+    <div class="bubble w-10 h-10 left-3/4" style="animation-duration: 20s;"></div>
+    <div class="cloud w-32 h-12 top-20 left-10" style="animation-duration: 45s;"></div>
+    <div class="cloud w-48 h-16 top-10 right-20" style="animation-duration: 55s;"></div>
+    <div class="seagull-anim text-4xl top-24 left-0"><i class="fa-solid fa-crow" style="transform: scaleX(-1);"></i></div>
+
+    <!-- 헤더 -->
+    <header class="w-full bg-busanBlue sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+            <a href="#" onclick="showPortal()" class="flex items-center gap-3 group flex-shrink-0">
+                <div class="bg-white p-2 rounded-full shadow-md group-hover:rotate-12 transition-transform duration-300">
+                    <i class="fa-solid fa-dove text-3xl text-busanBlue transform -scale-x-100"></i>
+                </div>
+                <h1 class="text-3xl md:text-4xl text-white drop-shadow-md tracking-tighter whitespace-nowrap font-black">부어모 : 부산 어린이들 모여라!</h1>
+            </a>
+            <div class="flex items-center gap-3 text-white text-sm whitespace-nowrap">
+                <span class="bg-white/20 px-3 py-1 rounded-full hidden sm:inline">부산 어린이들의 놀이터</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 네비게이션 -->
+    <nav class="w-full bg-white/90 backdrop-blur-sm border-b border-white/50 py-3 shadow-sm z-40">
+        <div class="max-w-7xl mx-auto px-4">
+            <ul class="flex justify-around md:justify-start md:gap-8 overflow-x-auto pb-1 md:pb-0">
+                <li>
+                    <div onclick="openGame()" class="flex flex-col items-center gap-1 group cursor-pointer p-2">
+                        <div class="w-12 h-12 bg-red-400 rounded-2xl flex items-center justify-center text-white text-xl shadow-md group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-gamepad"></i>
+                        </div>
+                        <span class="text-gray-700 group-hover:text-red-500">게임랜드</span>
+                    </div>
+                </li>
+                <li>
+                    <!-- 핫플보기 클릭 시 지정된 사이트로 이동 -->
+                    <div onclick="location.href='https://ai.studio/apps/drive/1TX5gwjQu7yn4Mr1Jv6QvuERTcJf25mYh?fullscreenApplet=true'" class="flex flex-col items-center gap-1 group cursor-pointer p-2">
+                        <div class="w-12 h-12 bg-orange-400 rounded-2xl flex items-center justify-center text-white text-xl shadow-md group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-map-location-dot"></i>
+                        </div>
+                        <span class="text-gray-700 group-hover:text-orange-500">핫플보기</span>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex flex-col items-center gap-1 group cursor-pointer p-2">
+                        <div class="w-12 h-12 bg-green-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-md group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-landmark"></i>
+                        </div>
+                        <span class="text-gray-700 group-hover:text-green-600">역사박물관</span>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex flex-col items-center gap-1 group cursor-pointer p-2">
+                        <div class="w-12 h-12 bg-purple-400 rounded-2xl flex items-center justify-center text-white text-xl shadow-md group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-video"></i>
+                        </div>
+                        <span class="text-gray-700 group-hover:text-purple-500">영상보기</span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 중앙 컨텐츠 영역 -->
+    <div id="content-container" class="flex-grow flex flex-col justify-center p-6 z-10">
+        
+        <!-- [1] 포털 메인 뷰 -->
+        <main id="portal-main-view" class="w-full max-w-7xl mx-auto">
+            <div class="text-center mb-8">
+                <span class="bg-white/80 text-busanDeep px-4 py-1 rounded-full text-sm font-bold shadow-sm inline-block mb-2">BUSAN KIDS PORTAL</span>
+                <h2 class="text-3xl md:text-4xl text-white drop-shadow-lg leading-tight">
+                    안녕? <span class="text-accentYellow">부산</span>이랑 친구할래?<br>
+                    재미있는 이야기가 가득해!
+                </h2>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
+                <!-- 워드 클라우드 -->
+                <div class="lg:col-span-2 flex flex-col">
+                    <div class="flex items-center justify-between mb-3 px-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-cloud text-white text-xl drop-shadow"></i>
+                            <h3 class="text-2xl text-white drop-shadow-md">부산 인기 키워드</h3>
+                        </div>
+                        <span class="bg-red-500 text-white text-xs px-2 py-1 rounded animate-pulse shadow">LIVE</span>
+                    </div>
+                    <div class="word-cloud-container w-full h-[400px] p-6 relative flex flex-wrap justify-center items-center content-center gap-4" id="wordCloud"></div>
+                </div>
+
+                <!-- 추천 영상 -->
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-2 mb-3 px-2">
+                        <i class="fa-brands fa-youtube text-red-500 bg-white rounded-full p-1 text-lg"></i>
+                        <h3 class="text-2xl text-white drop-shadow-md">오늘의 추천 영상</h3>
+                    </div>
+                    <div class="bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-white/50 relative group h-[400px]">
+                        <iframe class="w-full h-full" src="https://www.youtube.com/embed/3yH0L9H0F9o?controls=1&autoplay=1&mute=1" frameborder="0" allowfullscreen></iframe>
+                        <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 to-transparent p-6 text-white">
+                            <h3 class="text-xl mb-1 text-accentYellow">핑크퐁과 함께 부산 여행! 🎶</h3>
+                            <p class="text-sm text-gray-300">신나는 노래와 함께 떠나요!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- [2] 게임 뷰 -->
+        <div id="game-view">
+            <div class="back-to-home" onclick="showPortal()">
+                <i class="fa-solid fa-house mr-1"></i> 홈으로
+            </div>
+            <div class="ui-layer">
+                <div class="text-2xl font-black italic">DISTANCE: <span id="currentScore">0</span>m</div>
+                <div class="text-xs opacity-80 font-bold">BEST: <span id="bestScore">0</span>m</div>
+            </div>
+            <canvas id="gameCanvas"></canvas>
+            <div id="startScreen" class="start-screen">
+                <h1 class="text-5xl font-black mb-2 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-pink-500">BUSAN RUN</h1>
+                <p class="text-lg opacity-80">광안대교를 질주하라!</p>
+                <button class="btn-game" onclick="startGame()">질주 시작</button>
+            </div>
+            <div id="gameOverScreen" class="game-over-screen hidden">
+                <h2 class="text-4xl font-black mb-2 text-red-500">CRASHED!</h2>
+                <p class="text-xl">기록: <span id="finalScore">0</span>m</p>
+                <p id="newRecordMsg" class="text-yellow-400 font-bold hidden animate-bounce">NEW RECORD!</p>
+                <button class="btn-game" onclick="startGame()">다시 질주</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 하단 파도 -->
+    <div class="wave-container">
+        <svg class="wave-svg absolute bottom-2 opacity-50" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" fill="#81D4FA"></path>
+        </svg>
+        <svg class="wave-svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V150H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" class="wave-shape-front"></path>
+        </svg>
+    </div>
+
+    <footer class="bg-[#0277BD] text-white pt-8 pb-8 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="opacity-90 font-bold text-lg">부어모 (부산 어린이들 모여라!)</p>
+            <p class="text-sm opacity-60 mt-2">© 2026 Bueomo Kids Portal. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        /* --- 화면 전환 로직 --- */
+        function openGame() {
+            document.getElementById('portal-main-view').style.display = 'none';
+            document.getElementById('game-view').style.display = 'block';
+            resizeGame();
+        }
+
+        function showPortal() {
+            gameActive = false;
+            document.getElementById('portal-main-view').style.display = 'block';
+            document.getElementById('game-view').style.display = 'none';
+        }
+
+        /* --- 포털: 워드 클라우드 --- */
+        const busanKeywords = [
+            { text: "해운대", weight: 9 }, { text: "광안대교", weight: 8 },
+            { text: "씨앗호떡", weight: 6 }, { text: "부산 아쿠아리움", weight: 7 },
+            { text: "자갈치시장", weight: 5 }, { text: "돼지국밥", weight: 8 },
+            { text: "감천문화마을", weight: 7 }, { text: "태종대", weight: 6 },
+            { text: "갈매기", weight: 5 }, { text: "동백섬", weight: 4 },
+            { text: "송도 해상케이블카", weight: 7 }, { text: "용궁사", weight: 6 },
+            { text: "어묵", weight: 5 }, { text: "밀면", weight: 6 },
+            { text: "롯데월드 부산", weight: 8 }
+        ];
+        const cloudColors = ["text-blue-600", "text-sky-600", "text-teal-600", "text-indigo-600", "text-pink-500", "text-orange-500"];
+        
+        function createWordCloud() {
+            const container = document.getElementById('wordCloud');
+            if (!container) return;
+            container.innerHTML = '';
+            busanKeywords.sort(() => 0.5 - Math.random()).forEach(item => {
+                const span = document.createElement('span');
+                span.innerText = item.text;
+                span.className = `word-item font-jua select-none px-4 py-2 m-1 bg-white rounded-full shadow-md border-2 border-transparent hover:border-busanBlue ${cloudColors[Math.floor(Math.random() * cloudColors.length)]}`;
+                span.style.fontSize = `${1 + (item.weight * 0.15)}rem`;
+                span.onclick = () => alert(`'${item.text}'에 대해 더 알아볼까요?`);
+                container.appendChild(span);
+            });
+        }
+        createWordCloud();
+        setInterval(createWordCloud, 10000);
+
+        /* --- 게임: 부산 런 로직 --- */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('currentScore');
+        const bestScoreEl = document.getElementById('bestScore');
+        const finalScoreEl = document.getElementById('finalScore');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const newRecordMsg = document.getElementById('newRecordMsg');
+
+        let gameActive = false;
+        let score = 0;
+        let bestScore = localStorage.getItem('busan_run_best') || 0;
+        let frameCount = 0;
+        let boat;
+        let obstacles = [];
+        let bridgeParts = [];
+        let particles = [];
+        let gameSpeed = 6;
+
+        bestScoreEl.innerText = bestScore;
+
+        function resizeGame() {
+            const rect = document.getElementById('game-view').getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            if(!boat) boat = new Boat();
+        }
+
+        window.addEventListener('resize', () => { if(gameActive) resizeGame(); });
+        // 다리 초기 배치
+        for(let i=0; i<3; i++) bridgeParts.push({ x: i * 600 });
+
+        class Boat {
+            constructor() {
+                this.x = 100;
+                this.y = canvas.height * 0.75;
+                this.targetY = this.y;
+                this.width = 60;
+                this.height = 25;
+            }
+            update() {
+                if (keys['ArrowUp']) this.targetY -= 8;
+                if (keys['ArrowDown']) this.targetY += 8;
+                if (mouseIsDown) {
+                    if (mouseY < canvas.height / 2) this.targetY -= 8;
+                    else this.targetY += 8;
+                }
+                const topLimit = canvas.height * 0.6;
+                const bottomLimit = canvas.height - 30;
+                if (this.targetY < topLimit) this.targetY = topLimit;
+                if (this.targetY > bottomLimit) this.targetY = bottomLimit;
+                this.y += (this.targetY - this.y) * 0.15;
+                if (frameCount % 2 === 0) particles.push(new Particle(this.x, this.y + 15));
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(this.width, 0); ctx.lineTo(this.width, 25); ctx.lineTo(0, 25);
+                ctx.fill();
+                ctx.fillStyle = '#00d4ff'; ctx.fillRect(this.width * 0.6, 2, 12, 6);
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x; this.y = y;
+                this.vx = -gameSpeed; this.vy = (Math.random() - 0.5) * 2;
+                this.size = Math.random() * 5 + 2; this.life = 1.0;
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.life -= 0.04; }
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.life})`;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        class Obstacle {
+            constructor() {
+                this.x = canvas.width + 50;
+                this.y = (canvas.height * 0.6) + Math.random() * (canvas.height * 0.3);
+                this.width = 35; this.height = 35;
+            }
+            update() { this.x -= gameSpeed; }
+            draw() {
+                ctx.fillStyle = '#ffcc00';
+                ctx.beginPath(); ctx.moveTo(this.x, this.y + this.height); ctx.lineTo(this.x + this.width/2, this.y); ctx.lineTo(this.x + this.width, this.y + this.height); ctx.fill();
+            }
+        }
+
+        // 현수교 배경 그리기 함수 (무한 반복)
+        function drawBridge() {
+            gameSpeed = 6 + (score * 0.01);
+            
+            // 배경 수평 레이어 (어두운 건물 느낌)
+            ctx.fillStyle = '#0b1a2a';
+            ctx.fillRect(0, canvas.height * 0.4, canvas.width, canvas.height * 0.2);
+
+            bridgeParts.forEach(part => {
+                part.x -= gameSpeed * 0.8; // 다리는 보트보다 약간 느리게 (원근감)
+                if (part.x < -800) part.x = canvas.width + 200;
+
+                // 1. 주탑 (Pylon)
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(part.x, canvas.height * 0.1, 40, canvas.height * 0.5);
+                ctx.fillRect(part.x + 400, canvas.height * 0.1, 40, canvas.height * 0.5);
+
+                // 2. 메인 케이블 (현수선)
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(part.x + 20, canvas.height * 0.15);
+                ctx.bezierCurveTo(part.x + 220, canvas.height * 0.45, part.x + 220, canvas.height * 0.45, part.x + 420, canvas.height * 0.15);
+                ctx.stroke();
+
+                // 3. 세로 케이블 (Hangers)
+                ctx.lineWidth = 1;
+                for(let j=0; j<10; j++) {
+                    let hx = part.x + 20 + (j * 40);
+                    ctx.beginPath();
+                    ctx.moveTo(hx, canvas.height * 0.5);
+                    // 케이블의 높이에 맞춰 선을 내림
+                    ctx.lineTo(hx, canvas.height * 0.25);
+                    ctx.stroke();
+                }
+
+                // 4. 주탑 조명 효과 (부산 야경 느낌)
+                ctx.fillStyle = '#60a5fa';
+                for(let j=0; j<5; j++) {
+                    ctx.beginPath();
+                    ctx.arc(part.x + 20, canvas.height * 0.15 + (j * 60), 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(part.x + 420, canvas.height * 0.15 + (j * 60), 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // 수면 레이어
+            let grad = ctx.createLinearGradient(0, canvas.height * 0.6, 0, canvas.height);
+            grad.addColorStop(0, '#1e3a8a'); grad.addColorStop(1, '#172554');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, canvas.height * 0.6, canvas.width, canvas.height * 0.4);
+        }
+
+        function startGame() {
+            gameActive = true; score = 0; frameCount = 0;
+            obstacles = []; particles = [];
+            boat = new Boat();
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            newRecordMsg.classList.add('hidden');
+            animate();
+        }
+
+        function endGame() {
+            gameActive = false;
+            if (Math.floor(score) > bestScore) {
+                bestScore = Math.floor(score);
+                localStorage.setItem('busan_run_best', bestScore);
+                bestScoreEl.innerText = bestScore;
+                newRecordMsg.classList.remove('hidden');
+            }
+            finalScoreEl.innerText = Math.floor(score);
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        function animate() {
+            if (!gameActive) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawBridge(); // 배경 현수교 그리기
+
+            for(let i=particles.length-1; i>=0; i--) {
+                particles[i].update(); particles[i].draw();
+                if(particles[i].life <= 0) particles.splice(i, 1);
+            }
+            boat.update(); boat.draw();
+            if (frameCount % 40 === 0) obstacles.push(new Obstacle());
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].update(); obstacles[i].draw();
+                let b = boat, o = obstacles[i];
+                if (b.x < o.x + o.width && b.x + b.width > o.x && b.y < o.y + o.height && b.y + b.height > o.y) {
+                    endGame(); return;
+                }
+                if (o.x + o.width < 0) obstacles.splice(i, 1);
+            }
+            frameCount++; score += gameSpeed / 10;
+            scoreEl.innerText = Math.floor(score);
+            requestAnimationFrame(animate);
+        }
+
+        const keys = {};
+        let mouseIsDown = false;
+        let mouseY = 0;
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+        canvas.addEventListener('mousedown', e => { mouseIsDown = true; mouseY = e.offsetY; });
+        window.addEventListener('mouseup', () => mouseIsDown = false);
+        canvas.addEventListener('mousemove', e => mouseY = e.offsetY);
+        canvas.addEventListener('touchstart', e => { 
+            mouseIsDown = true; 
+            mouseY = e.touches[0].clientY - canvas.getBoundingClientRect().top; 
+            e.preventDefault(); 
+        }, {passive: false});
+        canvas.addEventListener('touchend', () => mouseIsDown = false);
+    </script>
+</body>
+</html>
