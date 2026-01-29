@@ -195,7 +195,7 @@
         <div class="max-w-7xl mx-auto px-4">
             <ul class="flex justify-around md:justify-start md:gap-8 overflow-x-auto pb-1 md:pb-0">
                 <li>
-                    <div onclick="location.href='https://ai.studio/apps/drive/1mLDWyFzqE_MnJgSey4Nq-d76ms2Ux6DK?fullscreenApplet=true'" class="flex flex-col items-center gap-1 group cursor-pointer p-2">
+                    <div onclick="openGame()" class="flex flex-col items-center gap-1 group cursor-pointer p-2">
                         <div class="w-12 h-12 bg-red-400 rounded-2xl flex items-center justify-center text-white text-xl shadow-md group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-gamepad"></i>
                         </div>
@@ -212,7 +212,8 @@
                     </div>
                 </li>
                 <li>
-                    <div class="flex flex-col items-center gap-1 group cursor-pointer p-2">
+                    <!-- 역사박물관 클릭 시 지정된 사이트로 이동 -->
+                    <div onclick="location.href='https://ai.studio/apps/drive/1mLDWyFzqE_MnJgSey4Nq-d76ms2Ux6DK?fullscreenApplet=true'" class="flex flex-col items-center gap-1 group cursor-pointer p-2">
                         <div class="w-12 h-12 bg-green-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-md group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-landmark"></i>
                         </div>
@@ -388,7 +389,6 @@
         }
 
         window.addEventListener('resize', () => { if(gameActive) resizeGame(); });
-        // 다리 초기 배치
         for(let i=0; i<3; i++) bridgeParts.push({ x: i * 600 });
 
         class Boat {
@@ -450,59 +450,35 @@
             }
         }
 
-        // 현수교 배경 그리기 함수 (무한 반복)
         function drawBridge() {
             gameSpeed = 6 + (score * 0.01);
-            
-            // 배경 수평 레이어 (어두운 건물 느낌)
             ctx.fillStyle = '#0b1a2a';
             ctx.fillRect(0, canvas.height * 0.4, canvas.width, canvas.height * 0.2);
-
             bridgeParts.forEach(part => {
-                part.x -= gameSpeed * 0.8; // 다리는 보트보다 약간 느리게 (원근감)
+                part.x -= gameSpeed * 0.8;
                 if (part.x < -800) part.x = canvas.width + 200;
-
-                // 1. 주탑 (Pylon)
                 ctx.fillStyle = '#1e293b';
                 ctx.fillRect(part.x, canvas.height * 0.1, 40, canvas.height * 0.5);
                 ctx.fillRect(part.x + 400, canvas.height * 0.1, 40, canvas.height * 0.5);
-
-                // 2. 메인 케이블 (현수선)
-                ctx.strokeStyle = '#475569';
-                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#475569'; ctx.lineWidth = 4;
                 ctx.beginPath();
                 ctx.moveTo(part.x + 20, canvas.height * 0.15);
                 ctx.bezierCurveTo(part.x + 220, canvas.height * 0.45, part.x + 220, canvas.height * 0.45, part.x + 420, canvas.height * 0.15);
                 ctx.stroke();
-
-                // 3. 세로 케이블 (Hangers)
                 ctx.lineWidth = 1;
                 for(let j=0; j<10; j++) {
                     let hx = part.x + 20 + (j * 40);
-                    ctx.beginPath();
-                    ctx.moveTo(hx, canvas.height * 0.5);
-                    // 케이블의 높이에 맞춰 선을 내림
-                    ctx.lineTo(hx, canvas.height * 0.25);
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(hx, canvas.height * 0.5); ctx.lineTo(hx, canvas.height * 0.25); ctx.stroke();
                 }
-
-                // 4. 주탑 조명 효과 (부산 야경 느낌)
                 ctx.fillStyle = '#60a5fa';
                 for(let j=0; j<5; j++) {
-                    ctx.beginPath();
-                    ctx.arc(part.x + 20, canvas.height * 0.15 + (j * 60), 4, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(part.x + 420, canvas.height * 0.15 + (j * 60), 4, 0, Math.PI * 2);
-                    ctx.fill();
+                    ctx.beginPath(); ctx.arc(part.x + 20, canvas.height * 0.15 + (j * 60), 4, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(part.x + 420, canvas.height * 0.15 + (j * 60), 4, 0, Math.PI * 2); ctx.fill();
                 }
             });
-
-            // 수면 레이어
             let grad = ctx.createLinearGradient(0, canvas.height * 0.6, 0, canvas.height);
             grad.addColorStop(0, '#1e3a8a'); grad.addColorStop(1, '#172554');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, canvas.height * 0.6, canvas.width, canvas.height * 0.4);
+            ctx.fillStyle = grad; ctx.fillRect(0, canvas.height * 0.6, canvas.width, canvas.height * 0.4);
         }
 
         function startGame() {
@@ -530,9 +506,7 @@
         function animate() {
             if (!gameActive) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            drawBridge(); // 배경 현수교 그리기
-
+            drawBridge();
             for(let i=particles.length-1; i>=0; i--) {
                 particles[i].update(); particles[i].draw();
                 if(particles[i].life <= 0) particles.splice(i, 1);
